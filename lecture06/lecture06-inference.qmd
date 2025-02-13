@@ -1,0 +1,1431 @@
+---
+title: "Lecture 06 - Inference"
+subtitle: "AMOD 5240H"
+author: "Dave Riegert"
+institute: "Trent University"
+execute: 
+  echo: true
+format:
+  revealjs:
+    # width: 1200
+    # height: 800
+    # min-scale: 1
+    # max-scale: 1
+    theme: default
+    margin: 0.05
+    incremental: false
+    logo: TUPMS.png
+    css: style.css
+    pdf-separate-fragments: false
+    auto-stretch: true
+    chalkboard:
+      # plugins:
+      #   - RevealChalkboard
+      chalk-effect: 0.2
+      chalk-width: 5
+      # src: chalkboard-many3.json
+    multiplex: false
+filters:
+  - webr
+webr:
+  packages: ["tibble", "ggplot2", "infer", "janitor", "openintro"]
+slide-number: true
+smaller: false
+---
+
+## Today's Content:
+
+```{r}
+#| include: false
+
+library(tidyverse)
+library(infer)
+library(janitor)
+library(broom)
+library(ggfortify)
+library(knitr)
+library(kableExtra)
+library(openintro)
+# library(dlRteaching)
+```
+
+<script type="text/x-mathjax-config"> 
+    MathJax.Hub.Config({ 
+        "HTML-CSS": { scale: 85, linebreaks: { automatic: true } }, 
+        SVG: { linebreaks: { automatic:true } }, 
+        displayAlign: "center" });
+</script>
+
+```{webr-r}
+#| context: 'setup'
+
+library(tidyverse)
+library(infer)
+library(janitor)
+library(broom)
+library(ggfortify)
+library(knitr)
+library(kableExtra)
+library(openintro)
+# library(dlRteaching)
+```
+
+### Inference
+
+- Hypothesis testing
+- Confidence intervals
+- Estimation (we did this with linear models and will return to this again)
+
+# Estimation Paradigms
+
+## Parametric vs. Non-Parametric
+
+-   A **parametric** approach to a problem assumes a particular distribution for
+    the population.
+-   A **non-parametric** approach does not require any particular distribution.
+
+It sounds like we should *always* use a non-parametric approach ... but there
+are pros and cons to each!
+
+::: callout-warning
+### Parametric vs. Non-Parametric
+
+This distinction can be extremely subtle.\
+We will talk more about this when we look at $\chi^{2}$-tests, which are
+considered non-parametric.
+:::
+
+## Parametric vs. Non-Parametric
+
+Benefits and drawbacks:
+
+-   Parametric approaches have more **statistical power**
+    -   statistical power is the ability of a test to detect an effect when an
+        effect is present
+    -   results can less reliable if the distributional assumption is violated
+-   Non-parametric approaches work in almost any situation
+    -   they have lower statistical power
+
+We *always* want to use a parametric test if possible! They are simpler to run
+and have more statistical power.
+
+::: callout-note
+IMS2 terminology: "Mathematical model" (parametric) and "Randomization" or
+"Bootstrapping" (non-parametric).
+:::
+
+## Parametric vs. Non-Parametric
+
+When we use a parametric approach, we can use a particular distribution and all
+of the machinery that comes with it!
+
+-   Find probabilities using `pnorm`, `pt`, `pf`, etc...
+    -   These help us find $p$-values in hypothesis testing!
+-   Determine quantiles using `qnorm`, `qchisq`, `qf`, etc..
+    -   We need the quantiles for constructing confidence intervals!
+
+## Parametric vs. Non-Parametric
+
+When we use a parametric approach, we can use a particular distribution and all
+of the machinery that comes with it!
+
+-   Find probabilities using `pnorm`, `pchisq`, `pf`, etc...
+-   Determine quantiles using `qnorm`, `qchisq`, `qf`, etc..
+
+When we use a non-parametric approach, then we must *approximate* the sampling
+distribution.
+
+- To calculate probabilities, we have to calculate them "by hand" using our
+approximated distribution (we use proportions!).
+- To determine quantiles, we also have to do this "by hand" (proportions!).
+- Most of the time, these two amount to finding the **proportion** of values 
+abovesome cutoff, OR the value where above that point, a proportion of the values
+lie.
+
+# Confidence intervals - Parametric
+
+## Why do we report CIs?
+
+- A plausible range of values for the population parameter is called a
+**confidence interval**.
+- Using only a sample statistic to estimate a parameter is like **fishing with
+a spear** in a murky lake, and using a confidence interval is like **fishing
+with a net**.
+- We can throw a spear where we saw a fish but we will probably miss. If we
+toss a net in that area, we have a good chance of catching the fish.
+
+So the analogy: if we report a point estimate, we probably won't hit the exact
+population parameter. If we report a range of plausible values we have a good
+shot at capturing the parameter.
+
+**Most importantly**: a confidence interval gives us a sense of the uncertainty
+in our point estimate.
+
+## Confidence Interval: Uncertainty
+
+I tell you that I randomly survey past AMOD students who have taken 5240 and
+that 90% of those surveyed *loved* this class.
+
+Sounds great, right?
+
+## Confidence Interval: Uncertainty
+
+I tell you that I randomly survey past AMOD students who have taken 5240 and
+that 90% of those surveyed *loved* this class.
+
+Sounds great, right?
+
+Now, I didn't tell you how many observations I had, nor did I give you any sense
+of the uncertainty in that estimate.
+
+## Confidence Interval: Uncertainty
+
+I tell you that I randomly survey past AMOD students who have taken 5240 and
+that 90% of those surveyed *loved* this class.
+
+Sounds great, right?
+
+Now, I didn't tell you how many observations I had, nor did I give you any sense
+of the uncertainty in that estimate.
+
+```{webr-r}
+# 4 successes, 5 observations
+
+```
+
+Instead, what if I told you that 90% of the students surveyed loved the class
+and the 95% confidence interval on the true proportion was
+the above?
+
+The interpretation here is that we are 95% confident that the *true* proportion
+(the parameter) is in that interval.
+
+## Confidence Interval: Definition
+
+A confidence interval is an interval estimate for a parameter that is calculated
+from data.
+
+Let's assume a confidence level of 95%. Then, the way that we should understand
+a confidence interval is:
+
+> If we were to repeatedly sample from the population and calculate a confidence
+> interval for each sample, then approximately 95% of the confidence intervals
+> would contain the true population parameter.
+
+Note that there is *NO* probability mentioned here. The reason is that the true
+parameter is either in the interval or it is not. There is no probability
+associated with this once the interval is determined.
+
+Confidence intervals are essentially another way to report the uncertainty in
+our point estimate.
+
+## Calculating a Confidence Interval
+
+When constructing a confidence interval, we use the _sampling distribution_ 
+of the statistic we are calculating.
+
+Let's assume we are interested in the 95% confidence interval for the sample
+mean, $\bar{X}$. Then, we want to find the end points $a$ and $b$ such that the
+following probability expression is true:
+
+$$
+P(a < \bar{X} < b) = 0.95
+$$
+
+- In particular, we want to find the *middle* 95% of the probability.\
+- This final piece of information about the middle "anchors" the expression 
+above so that we can actually find a unique $a$ and $b$.
+
+## Calculating a Confidence Interval
+
+This seems like it might be a bit of a pain, but, thanks to the CLT:
+
+$$
+\bar{X} \sim \mathcal{N} \left(\mu, \frac{\sigma}{\sqrt{n}} \right)
+$$
+
+And we want to find:
+
+$$
+P(a < \bar{X} < b) = 0.95
+$$
+
+## Calculating a Confidence Interval
+
+$$
+\begin{aligned}
+& & P(a < \bar{X} < b) &= 0.95 \\ 
+\ Z\text{-transform} \quad &\rightarrow &  P\left(\frac{a - \mu}{\frac{\sigma}{\sqrt{n}}} < \frac{\bar{X} - \mu}{\frac{\sigma}{\sqrt{n}}} < \frac{b - \mu}{\frac{\sigma}{\sqrt{n}}} \right) &= 0.95 \\
+\text{Rewrite} \quad &\rightarrow & P\left(z_{a} < Z < z_{b} \right) &= 0.95
+\end{aligned}
+$$
+
+## Calculating a Confidence Interval
+
+Because $\bar{X}$ is normally distributed (approximately, due to the CLT!),
+
+$$
+Z \sim \mathcal{N}(0, 1)
+$$ and the values of $z_{a}$ and $z_{b}$ are the quantiles of the standard
+Normal distribution such that:
+
+$$
+\begin{aligned}
+P(z_{a} < Z < z_{b}) &= 0.95 & & \text{due to symmetry, } z_{a} = -z_{b}\\ 
+P(Z < z_{b}) - P(Z < -z_{b}) &= 0.95 & & \text{take } 1 - \text{ to each side}\\
+1 - P(Z < z_{b}) + P(Z < -z_{b}) &= 1 - 0.95 & & \\
+P(Z > z_{b}) + P(Z < -z_{b}) &= 0.05 & & \text{and } P(Z > z_{b}) = P(Z < -z_{b})\\
+2P(Z > z_{b}) &= 0.05 & & \\
+P(Z > z_{b}) &= 0.025 & &
+\end{aligned}
+$$
+
+## Visually
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+
+dlRteaching::ggnorm_pdf() + labs(x = "z Value", y = "f(z)") +
+  # theme(axis.text.x = element_blank()) + 
+  scale_x_continuous(breaks = function(x) c(0, x[x != 0]), 
+                       labels = function(x) ifelse(x == 0, "0", "")) +
+  theme(axis.text.y = element_text(size = 16), 
+        axis.text.x = element_text(size = 16),
+        axis.title.x = element_text(size = 16),
+        axis.title.y = element_text(size = 16))
+```
+
+## Confidence Intervals for $\mu$ Generally
+
+In general, we would use the following formula to calculate a confidence
+
+$$
+\bar{x} \pm z^{\star} \cdot \frac{\sigma}{\sqrt{n}}
+$$
+
+where $z^{\star}$ is the quantile of the standard Normal distribution that
+corresponds to the desired confidence level. I.e., $z^{\star}$ satisfies
+
+$$
+P(Z > z^{\star}) = \frac{1 - \text{confidence level}}{2}
+$$
+
+::: callout-note
+### Confidence Level Formula
+
+This *IS* $\mu \pm z^{\star}\cdot \frac{\sigma}{\sqrt{n}}$ where we have used $\bar{x}$
+as our best estimate of $\mu$ and an actual quantile for $Z$!  
+I.e., this is the $Z$-transform! $z^{\star} = \frac{x_{ci} - \mu}{SE_{\bar{X}}}$
+:::
+
+## Quick Note
+
+::: callout-important
+### Use of Normal when $\sigma$ is unknown
+
+When $\sigma$ is unknown, we use the sample standard deviation, $s$, in place of
+$\sigma$ and the $t$-distribution in place of the Normal distribution.
+:::
+
+For the next few examples, we will assume that we *know* $\sigma$, the
+population standard deviation.
+
+**We almost never know** $\sigma$, and will need to account for that situation.
+
+## Average Number of Relationships
+
+```{r}
+#| echo: false
+
+set.seed(57)
+n_rel <- 50
+xbar_rel <- 3.2
+sigma_rel <- 1.74
+cl_rel <- 0.95
+
+obs_rel <- rnorm(n_rel, mean = 3.2, sd = sigma_rel)
+```
+
+```{r}
+#| context: 'setup'
+
+set.seed(57)
+n_rel <- 50
+xbar_rel <- 3.2
+sigma_rel <- 1.74
+cl_rel <- 0.95
+
+obs_rel <- rnorm(n_rel, mean = 3.2, sd = sigma_rel)
+```
+
+A random sample of `r n_rel` college students were asked how many exclusive
+relationships they have been in so far.\
+This sample yielded a mean of `r xbar_rel`.\
+The population standard deviation is known to be `r sigma_rel`.
+
+Construct the `r cl_rel*100`% confidence interval for the true mean number of
+exclusive relationships for all college students.
+
+-   $\bar{x} = `r xbar_rel`$
+-   $\sigma = `r sigma_rel`$
+
+## Average Number of Relationships
+
+A random sample of `r n_rel` college students were asked how many exclusive
+relationships they have been in so far.
+
+-   $n = `r n_rel`$
+-   $\bar{x} = `r xbar_rel`$
+-   $\sigma = `r sigma_rel`$
+-   confidence level $= `r cl_rel*100`\%$
+
+```{webr-r}
+# assume observations are in obs_rel 
+# setup the above
+
+```
+
+## Average Number of Relationships
+
+The confidence interval could be calculated using:
+
+```{r}
+#| echo: false
+
+# P(Z > z_star) = 0.025
+z_star <- qnorm(cl_rel / 2, mean = 0, sd = 1, lower.tail = FALSE)
+
+# SE of xbar
+se_xbar_rel <- sigma_rel / sqrt(n_rel)
+
+lower_bound <- xbar_rel - z_star * se_xbar_rel
+upper_bound <- xbar_rel + z_star * se_xbar_rel
+
+c(lower_bound, upper_bound)
+```
+
+```{webr-r}
+# P(Z > z_star) = 0.025
+
+# SE of xbar
+
+# lower and upper bound
+
+# print it
+```
+
+We are 95% confident that the true mean number of exclusive relationships for
+all college students is between `r lower_bound %>% round(2)` and
+`r upper_bound %>% round(2)`.
+
+# Confidence Intervals - Non-Parametric
+
+## Non-Parametric Confidence Intervals
+
+When we don't know the population distribution, we can't use the CLT to
+calculate a confidence interval (i.e., we can't use the Normal distribution).
+
+We need to use the sampling distribution of the statistic we are calculating,
+but what if we don't know what that is?
+
+## Non-Parametric Confidence Intervals
+
+When we don't know the population distribution, we can't use the CLT to
+calculate a confidence interval (i.e., we can't use the Normal distribution).
+
+We need to use the sampling distribution of the statistic we are calculating,
+but what if we don't know what that is?
+
+**This is where the Bootstrap comes to the rescue!**
+
+## Bootstrap Confidence Intervals
+
+-   The **Bootstrap** is a non-parametric method for estimating the sampling
+    distribution of a statistic.
+-   The idea is to resample from the *sample observations* to estimate the
+    sampling distribution of the statistic.
+
+Wait... what?
+
+## Bootstrap Confidence Intervals
+
+-   The **Bootstrap** is a non-parametric method for estimating the sampling
+    distribution of a statistic.
+-   The idea is to resample from the *sample observations* to estimate the
+    sampling distribution of the statistic.
+
+Wait... what?
+
+That's right! We resample from our observations, estimate the statistic, and
+repeat this over and over again.
+
+## Bootstrap Method
+
+Assume we have a sample of $n$ observations.\
+The steps for the Bootstrap are:
+
+1.  Draw a sample of size $n$ *with replacement* from the original sample.
+2.  Calculate the statistic of interest.
+3.  Repeat steps 1 and 2 a large number of times (e.g., 10,000).
+4.  Use the empirical distribution ("histogram") of the statistic to estimate
+    the sampling distribution.
+
+Instead of using a theoretical distribution, like the Normal, we use this set of
+resampled statistics to estimate the sampling distribution.
+
+## Average Number of Relationships
+
+Let's assume that we had a sample of `r n_rel` college students and we collected
+the number of exclusive relationships they have been in so far.
+
+```{r}
+#| echo: true
+
+obs_rel %>% str()
+```
+
+We want to calculate the 95% confidence interval for the true mean number of
+exclusive relationships for all college students.
+
+## Re-Sample the Observations 10,000 Times
+
+There are many ways to do this, but the idea would be:
+
+```{r}
+#| echo: false
+
+bs_means <- tibble(sample_mean = replicate(10000, 
+  obs_rel %>% sample(size = n_rel, replace = TRUE) %>% mean()))
+```
+
+```{webr-r}
+# use infer to get the bootstrap means
+
+
+```
+
+
+## Empirical Distribution
+
+```{r}
+#| fig-align: center
+#| eval: false
+#| echo: false
+
+bs_means %>% ggplot(aes(x = sample_mean)) + 
+  geom_histogram(colour = "steelblue", fill = "lightblue", bins = 20) + 
+  labs(x = "Bootstrap Sample Mean", y = "Frequency", 
+       title = "Mean Number of relationships")
+```
+
+```{webr-r}
+# visualize the sampling distribution
+```
+
+
+## Bootstrap Confidence Interval
+
+Now, to find the 95% confidence interval, previously we wanted to find
+
+$$
+P(a < \bar{X} < b) = 0.95
+$$
+
+But ... We're assuming we don't know the distribution for $\bar{X}$...
+
+## Bootstrap Confidence Interval
+
+Now, to find the 95% confidence interval, previously we wanted to find
+
+$$
+P(a < \bar{X} < b) = 0.95
+$$
+
+But ... We're assuming we don't know the distribution for $\bar{X}$...
+
+*HOWEVER*, we keep talking about probabilities and proportions getting at the
+same idea ...
+
+So ... we could estimate the 95% confidence interval by finding the 2.5% and
+97.5% *quantiles of the bootstrap sampling distribution*.
+
+
+## Calculate the CI
+
+```{r}
+#| echo: false
+#| eval: false
+
+bs_means %>% 
+  summarize(`2.5th-percentile` = quantile(sample_mean, 0.025),  
+            `97.5th-percentile` = quantile(sample_mean, 0.975)) %>% 
+  adorn_rounding(2,, everything())
+```
+
+```{webr-r}
+# use summarize() to find the 2.5th and 97.5th percentiles
+
+```
+
+We are 95% confident that the true mean number of exclusive relationships for
+all college students is between 
+`r quantile(bs_means %>% pull(sample_mean), 0.025) %>% round(2)` and
+`r quantile(bs_means %>% pull(sample_mean), 0.975) %>% round(2)`.
+
+
+# Case Study: Gender Discrimination
+
+## Gender Descrimination
+
+- In 1972, as a part of a study^[B.Rosen and T. Jerdee (1974), 
+"Influence of sex role stereotypes on personnel decisions", J.Applied 
+Psychology, 59:9-14.] on gender discrimination, 48 male bank supervisors were
+each given the same personnel file and asked to judge whether the person should
+be promoted to a branch manager job that was described as “routine”.
+- The files were identical except that half of the supervisors had files 
+showing the person was male while the other half had files showing the person 
+was female.
+- It was randomly determined which supervisors got “male” applications and 
+which got “female” applications.
+- Of the 48 files reviewed, 35 were promoted.
+- The study is testing whether females are unfairly discriminated against.
+- Is this an observational study or an experiment?
+
+## Data
+
+At a first glance, does there appear to be a relationship between promotion 
+and gender?
+
+```{r}
+#| label: makeOutcomeTable2-1
+#| echo: false
+
+options(knitr.table.format = "html") 
+dt <- data.frame("Yes" = c(21, 14, 35), "No" = c(3, 10, 13), "Total" = c(24, 24, 48))
+row.names(dt) <- c("Male", "Female", "")
+kable(dt, align = 'ccc') %>%
+  kable_styling("striped", full_width = FALSE, position = "center", 
+                font_size = 24) %>%
+  add_header_above(c(" " = 1, "Promoted" = 2, " " = 1)) %>%
+  group_rows("Gender", 1, 2) %>%
+  group_rows("Total", 3, 3)
+```
+
+<br>
+**% of males promoted**: 21 / 24 * 100 = 87.5
+
+**% of females promoted**: 14 / 24 * 100 = 58.3
+
+**% difference**: 87.5-58.3 = 29.2
+
+## Practice
+
+We saw a difference of almost 30% (29.2% to be exact) between the proportion of male and female files that are promoted. Based on this information, which of the below is true?
+
+1. If we were to repeat the experiment we will definitely see that more female files get promoted. This was a fluke.
+2. Promotion is dependent on gender, males are more likely to be promoted, and hence there is gender discrimination against women in promotion decisions.
+3. The difference in the proportions of promoted male and female files is due to chance, this is not evidence of gender discrimination against women in promotion decisions.
+4. Women are less qualified than men, and this is why fewer females get promoted.
+
+## Practice
+
+We saw a difference of almost 30% (29.2% to be exact) between the proportion of male and female files that are promoted. Based on this information, which of the below is true?
+
+1. If we were to repeat the experiment we will definitely see that more female files get promoted. This was a fluke.
+2. f<span id="highlight">Promotion is dependent on gender, males are more likely to be promoted, and hence there is gender discrimination against women in promotion decisions.</span>  <span style="color:red;">Maybe!</span>
+3. <span id="highlight">The difference in the proportions of promoted male and female files is due to chance, this is not evidence of gender discrimination against women in promotion decisions.</span>  <span style="color:red;">Maybe!</span>
+4. Women are less qualified than men, and this is why fewer females get promoted.
+
+## Two Competing Claims
+
+“There is nothing going on.” (**Null Hypothesis**)
+
+Promotion and gender are **independent**.
+
+No gender discrimination.
+
+Observed difference in proportions is simply due to chance.
+
+<hr>
+<center>**versus**</center>
+<hr>
+
+There is something going on.” (**Alternative Hypothesis**)
+
+Promotion and gender are **dependent**.
+
+There is gender discrimination.
+
+Observed difference in proportions is not due to chance.
+
+# Hypothesis Testing
+
+## The Secret Recipe {style="font-size:95%;"}
+
+1. **Setup**: State the population and parameter of interest.
+2. **Hypotheses**: State your hypotheses ($H_{0}$ and $H_{A}$).
+3. **Assumptions**: Test assumptions (e.g. normality, independence, etc.)
+4. **Calculation**: Find the $p$-value:
+    a. **Parametric Approach**: calculate the test statistic and find $p$-value.
+        - Calculate your test statistic assuming $H_{0}$ is true
+    b. **Simulation Approach**: Approximate the null distribution, find 
+    the $p$-value, and visualize the $p$-value.
+5. **Statistical Decision**: Determine whether to **reject** or **not reject** 
+the null hypothesis:
+    - compare your p-value to a **significance level**
+6. **Conclusion**: There is ...
+    * evidence to support rejecting the null hypothesis (**reject $H_{0}$**)  
+    OR
+    * **not** enough evidence to support rejecting the null hypothesis 
+    (**fail to reject $H_{0}$**)
+
+
+## Hypothesis Tests as a Trial 
+
+Hypothesis testing is very much like a court trial.
+
+:::: {.columns}
+
+::: {.column width=30%}
+
+![](fig/fig_2_1_trial.png)^[Image from http://www.nwherald.com/_internal/cimg!0/oo1il4sf8zzaqbboq25oevvbg99wpot]
+
+:::
+
+::: {.column width=70%}
+
+* $H_0$: defendent is not guilty  
+ $H_A$: defendent is guilty
+* We then present the evidence $-$ collect data
+* Then we judge the evidence: "Could these data plausibly have happened by chance if the null hypothesis were true?"
+    * If they were very unlikely to have occurred, then the evidence raises more than *a reasonable doubt* in our minds about the null hypothesis
+* Ultimately, we must make a decision: how unlikely is **unlikely**?
+
+:::
+::::
+
+
+
+## Hypothesis Test as a Trial (cont'd) 
+
+* If the evidence is not strong enough to reject the assumption of innocence, the jury returns with a verdict of "not guilty".
+    * The jury does not say that the defendant is innocent, just that there is not enough evidence to convict.
+    * The defendant may, in fact, be innocent, but the jury has no way of being sure.
+* Said statistically, we **fail to reject the null hypothesis**.
+    * We never declare the null hypothesis to be true, because we simply do not know whether it's true or not.
+    * Therefore we never "accept the null hypothesis".
+
+## Hypothesis Test as a Trial (cont'd)
+
+* In a trial, the burden of proof is on the prosecution.
+* In a hypothesis test, the burden of proof is on the unusual claim.
+*  The null hypothesis is the ordinary state of affairs (the status quo), so it's the alternative hypothesis that we consider unusual and for which we must gather evidence.
+
+## For Emphasis
+
+We **NEVER**:
+
+- "prove" anything with a hypothesis test
+- find the alternative hypothesis ture
+- find the null hypothesis true
+- accept the null hypothesis
+- accept the alternative hypothesis
+- reject the alternative hypothesis
+
+:::{.callout-warning}
+### Statistical Decision
+Two options:  
+1. fail to reject the null hypothesis;  
+2. reject the null hypothesis;
+:::
+
+# How Do We Do This?
+
+## What's Our Objective?
+
+So we want to look at this data: 48 experimental units (bank supervisors)
+with results (35 promoted, 13 not), and determine whether we think
+the gender of the applicant is independent of the determination.
+
+How?
+
+## Our Data
+
+:::: {.columns}
+
+::: {.column width=40%}
+
+![](fig/fig_2_1_cards1.png)
+
+:::
+
+::: {.column width=60%}
+
+We have 48 files: 
+
+- 24 were labeled 'female' (bottom 24); and 
+- 24 were labeled 'male' (top 24). 
+- Of these cards, 35 were 'promoted' (red) and 13 were 'not promoted' (white).
+
+:::
+::::
+
+## Variability of the Statistic, Under the Assumption
+
+- **If** the decision of the supervisors was independent of the gender
+of the applicant file, then the results we obtained were entirely
+due to chance.
+- The files were all identical aside from the declared name/gender
+of the applicant, so we assume that each supervisor would have made the same
+decision regardless of the file presented.
+- We can use **randomization** to explore this scenario.
+
+How would we expect the 48 files (male / female) to be split up between 
+"promoted" and "not promoted" if there was no dependence on of promotion 
+on the file's gender?
+
+## Expectation: Promotion Independent on Gender
+
+- If we ignore the Gender:
+    - Some supervisors are more likely to promote;
+    - Some supervisors are less likely to promote;
+- This is why we randomly assigned the files to the bank supervisors.
+- There should be an equal number of "more likely to promote" and "less likely 
+to promote" supervisors that received each Gender of file.
+
+So ... ?
+
+## Randomization: Decision Independent of Gender
+
+We can perform a **randomization** simulation, where we simulate what
+**could** have happened, under the scenario just mentioned. In such a 
+simulation, we shuffle the 48 files (35 labeled as 'promoted' and 13 
+labeled as 'not promoted') and deal them out into two stacks: 24 into
+a pile labeled 'female' and 24 into a pile labeled 'male'. 
+
+![](fig/fig_2_1_cards2.png){fig-align="center"}
+
+## Variability of the Statistic
+
+- Even if the two are independent, we won't expect the difference in the
+proportions to be exactly 0.
+- For one thing, we have 35 'promoted' cases (not divisible by 2!). 
+- No matter what, there will be **some** difference in the two arbitrary 
+(gender) groups. 
+
+How much variability is a sign of something suspicious going on? 
+
+**That's the point of statistical inference**!
+
+## Stating the Hypotheses
+
+- $H_0$: **Null hypothesis**. The variables gender and decision are independent.  
+The difference in promotion rates of 29.2% was due to natural variability
+inherent in the population.
+- $H_A$: **Alternative hypothesis**. The variables gender and decision are not independent. The difference in promotion rates of 29.2% was not due to natural variability, and equally qualified female personnel are less likely to be promoted than male personnel.
+
+## Simulation 1
+
+![](fig/fig_2_1_cards3.png){fig-align="center"}
+
+## Simulation 1: Summary
+
+```{r}
+#| label: tbl-makeOutcomeTable2-3
+#| echo: false
+#| tbl-cap: |
+#|   Number of promotions by gender based on a single randomization of the 
+#|   data.
+
+library("kableExtra")
+library("knitr")
+options(knitr.table.format = "html") 
+dt <- data.frame("Yes" = c(18, 17, 35), "No" = c(6, 7, 13), 
+                 "Total" = c(24, 24, 48))
+row.names(dt) <- c("Male", "Female", "")
+kable(dt, align = 'ccc') %>%
+  kable_styling("striped", full_width = FALSE, position = "center", 
+                font_size = 20) %>%
+  add_header_above(c(" " = 1, "Promoted" = 2, " " = 1)) %>%
+  group_rows("Gender", 1, 2) %>%
+  group_rows("Total", 3, 3)
+```
+
+**Difference**: 18/24 - 17/24 = 0.0417.
+
+
+## Doing the Simulation Again and Again
+
+So we did one simulation, and found a really small difference in promoted proportions,
+under the assumption that there is independence. Is this evidence?
+
+**Do it again!**
+
+- Simulation 2: difference of -0.0417
+- Simulation 3: difference of 0.208
+- .... ? COMPUTERS!
+
+## Results of Many, Many Shuffles
+
+![Figure: Stacked dot plot of differences from 100 simulations under assumption of independence.](fig/fig_2_1_results.png){fig-align="center"}
+
+What was our observed difference in proportions (sample statistic) again? 
+**0.292**
+
+## So Is Our Data Weird?
+
+The question we can answer, at the end of all of this, is:
+
+**How often would we expect see a result like 0.292, or even bigger, if** 
+**the null hypothesis were true?**
+
+And the answer is: around 2 times in 100 simulations. 
+
+## Is This Rare?
+
+- The difference of 29.2% is a rare event if there really is no impact from 
+listing gender in the candidates’ files. 
+- This provides us with two possible interpretations of the results:
+    - If $H_0$, the Null hypothesis, is true: gender has no effect on promotion 
+    decision, and we observed a difference that is so large that it would only
+    happen rarely.
+    - If $H_A$, the Alternative hypothesis, is true: gender has an effect on 
+    promotion decision, and what we observed was actually due to equally
+    qualified female candidates being discriminated against in promotion
+    decisions, which explains the large difference of 29.2%.
+- We determined that there was only approximately a 0.02 (2%) 
+probability of obtaining a sample where 29.2% or more male candidates than female 
+candidates get promoted under the null hypothesis.
+- We conclude that **the data provide evidence of gender discrimination** 
+against female candidates by the male supervisors. In this case, we would side
+with the $H_A$, alternative hypothesis, as a more plausible outcome.
+
+## Statistical Inference: Definition
+
+**Statistical inference** is the practice of making decisions and conclusions from
+data in the context of uncertainty. Errors do occur, just like rare events, and 
+the dataset at hand might lead us to the wrong conclusion. 
+
+While a given dataset may not always lead us to a correct conclusion, statistical
+inference gives us tools to control and evaluate how often these errors occur. 
+
+## Re-Doing the Gender Discrimination Example
+
+- Earlier, we "did" a simulation where we just saw the results.
+- Now we're going to do the entire simulation, properly.
+
+```{r}
+#| label: load-bank-promotion-data
+#| echo: false
+
+data("gender_discrimination", package = "openintro")
+gd <- gender_discrimination # easier to type
+glimpse(gd)
+```
+
+```{webr-r}
+#| label: load-bank-promotion-data
+
+data("gender_discrimination", package = "openintro")
+gd <- gender_discrimination # easier to type
+glimpse(gd)
+```
+
+## Re-Doing the Gender Discrimination Example
+
+The over structure of using the `infer` package is _always_ the same:
+
+- data frame to 
+- `specify()` to
+- `hypothesize()` to 
+- `generate()` to
+- `calculate()`
+
+**ALWAYS**.  
+We may not have the `hypothesize()` function, depending on what we are doing.
+
+## Using `infer`
+
+- `specify()` -- what columns of the data frame we are interested in and 
+what relationship, if any, we are looking at.
+- `hypothesize()` -- sets up the null hypothesis
+    - `null`: "type" of hypothesis test
+    - null value will be needed, depending on the test
+- `generate()` -- performs the simulation
+    - `reps`: number of replicates (simulation runs)
+    - `type`: how the simulation should be run (`draw`, `bootstrap`, `permute`)
+- `calculate()` -- calculates the estimate of interest from each replicate
+    - `stat`: the statistic / estimator to be calculated (`"mean"`, `"prop"`, 
+    `"diff in means"`, `"diff in props"`, etc.)
+
+## Gender Discrimination Example
+
+What does the output of `specify() %>% hypothesize() %>% generate()`
+look like:
+
+```{r}
+#| label: show_gen
+#| eval: true
+#| cache: true
+#| echo: false
+
+gd_perm3 <- gd %>% 
+  specify(decision ~ gender, success = "promoted") %>%
+  hypothesize(null = "independence") %>%
+  generate(reps = 3, type = "permute")
+
+gd_perm3 %>% glimpse()
+```
+
+```{webr-r}
+#| label: show_gen
+
+# do that :)
+```
+
+## Re-Doing the Gender Discrimination Example
+
+We can then group these by replicate, and count the results:
+```{webr-r}
+
+# count the number of promotions by gender level
+```
+
+## Re-Doing the Gender Discrimination Example
+
+Finally, calculate the difference in proportion, male - female
+
+```{r}
+diffs <- gd_perm3 %>%
+  calculate(stat = "diff in props", order = c("male", "female"))
+diffs
+```
+
+```{web-r}
+# calculate the differences in props; order is male - female
+# use gd_perm3 to do this
+```
+
+Then our observed statistic used the breakdown of 21 / 24 and 14 / 24.
+How often do we see a result this big, or bigger?
+
+```{r}
+#| echo: false
+observed <- 21/24 - 14/24
+# sum( diffs$stat >= observed)
+```
+
+```{webr-r}
+observed <- 21/24 - 14/24
+
+# find the number of replicates as big or bigger
+```
+
+## Re-Doing, Bigger
+
+
+```{r}
+#| echo: false
+results  <- gd %>% 
+  specify(decision ~ gender, success = "promoted") %>%
+  hypothesize(null = "independence") %>%
+  generate(reps = 100, type = "permute") %>%
+  calculate(stat = "diff in props", order = c("male", "female")) %>%
+  count(stat >= observed)
+# results
+```
+
+```{webr-r}
+# the whole meal-deal, use reps = 100
+
+```
+
+## Re-Doing, Bigger(er)
+
+```{webr-r}
+# again, but use reps = 10000
+
+```
+
+In 10,000 replicates of this shuffling simulation, we saw a result like
+our observed statistic around `r results$n[2] / 10000 * 100`% of the time.
+
+**Not very likely!**
+
+
+
+## Discrete Simulation Results
+
+- The binomial and "area under its curve" are not the same thing.  
+- But discrete simulation results and binomial distributions are very, very 
+similar.
+- They are both discrete objects (which means a finite, typically small, 
+number of $x$ possibilities).
+- They both can be plotted as histograms, 
+- We compute "area under the curve" in the same way: add up the rectangles! 
+- Recall the simulation we concluded with earlier.
+
+# Hypothesis Tests
+
+## Hypothesis Testing
+
+Earlier in this lecture we handwaved an explanation of a hypothesis test. Let's
+formally define the ideas, and set up the structure for one particular test,
+involving the binomials we just reviewed!
+
+## Hypothesis Test Definition
+
+- A **hypothesis test** is a formal technique for evaluating two competing 
+(mathematical statement) possibilities.
+- In each scenario, we describe a **null hypothesis** which represents 
+either a skeptical perspective or a perspective of no difference.
+- We also have an **alternative hypothesis**, which represents a new perspective 
+such as the possibility of a relationship between two variables or a treatment 
+effect in an experiment.
+- The alternative hypothesis is usually the reason the scientists set out 
+to do the research in the first place, and is connected to the 
+**scientific hypothesis**.
+
+## Null and alternative hypotheses.
+
+The null hypothesis $(H_0)$  
+often represents either a skeptical perspective 
+or a claim of “no difference” to be tested.
+
+The alternative hypothesis ($H_A$)  
+represents an alternative claim under consideration and is (for us, always!) 
+represented by a range of possible values for the value of interest.
+
+:::{.callout-warning}
+### Setting Up $H_{0}$ and $H_{A}$
+When the hypotheses can be represented as a mathematical expression, the 
+expression that contains **equality** is the null!  
+"Containing equality" means: $=$, $\leq$, or $\geq$
+:::
+
+## The Famous p-value
+
+- The **p-value** is one of the most misunderstood concepts in all of science.
+- Formally, it is: the **probability** of observing data **at least as** 
+favorable to the alternative hypothesis as our current dataset, 
+**if the null hypothesis were true**. 
+- We'll often refer to this as the probability of seeing a result
+**as extreme as, or more extreme than** the observed statistic, under the
+assumption that the null is true. 
+
+## The Famous p-value
+
+- The **p-value** is one of the most misunderstood concepts in all of science.
+- Formally, it is: the **probability** of observing data **at least as** 
+favorable to the alternative hypothesis as our current dataset, 
+**if the null hypothesis were true**. 
+- We'll often refer to this as the probability of seeing a result
+**as extreme as, or more extreme than** the observed statistic, under the
+assumption that the null is true. 
+
+Recall the simulation (10,000 replicates) we did for the gender bias study. 
+We found results that were $\geq$ the observed statistic (called the 
+**test statistic**).  
+Those were results that were **as extreme as** (the $=$) or 
+**more extreme than** (the $>$) the observed difference in proportions. 
+
+```{r}
+#| eval: false
+
+results$n[2] / 10000
+```
+
+## Is a Simulation the "Real" p-value?
+
+- Technically speaking, when we run a simulation, regardless of how many
+replicates we use, we aren't getting the "real" p-value.
+- Think again about the gender bias study.
+    - We had 48 samples, 35 'successes' and 13 'failures'.
+    - How many ways are there to choose 24 samples from this set of 48?
+
+```{r}
+choose(48, 24)
+```
+
+- That is ... a really big number: 3,224,763,683,100.
+- We'd need to observe over 3 trillion unique permutations of the data in 
+order to get the exact p-value under the null.
+- However, what we've discovered is that mathematically, doing "enough" 
+simulations gets us really close.
+
+Let's try increasing numbers of simulations and see what happens for this case. 
+
+## Results: Increasing Replicates
+
+```{r}
+#| cache: true
+#| echo: false
+#| eval: false
+
+library(doParallel)
+library(foreach)
+
+# only needs to be calculated once
+null_spec <- gd %>% 
+  specify(decision ~ gender, success = "promoted") %>% 
+  hypothesize(null = "independence")
+
+compare_reps_gender_prop <- function(total_reps, num_batches, cl, 
+                                     observed, null_spec){
+  reps_per_batch <- total_reps / num_batches
+  
+  # Ensure reps_per_batch is an integer
+  reps_per_batch <- as.integer(reps_per_batch)
+  
+  # Parallel execution of batches
+  stat <- foreach(i = 1:num_batches, .combine = 'c', 
+                  .packages = c('infer', 'dplyr')) %dopar% {
+                    # Set a different seed for each batch
+                    # set.seed(123 + i)
+                    # Generate permutations and calculate statistics
+                    null_spec  %>% 
+                      generate(reps = reps_per_batch, type = "permute") %>% 
+                      calculate(stat = "diff in props", order = c("male", "female")) %>% 
+                      count("stat_geq_obs" = stat >= observed) %>% 
+                      (\(xx) xx$n[xx$stat_geq_obs] )()
+                  }
+  
+  # Count the number of times the simulated statistic exceeds the observed statistic
+  sum(stat) / total_reps
+}
+
+total_reps <- c(1e4, 1e5, 1e6, 1e7)
+n_cores <- parallel::detectCores() - 1
+
+cl <- makeCluster(n_cores)
+registerDoParallel(cl)
+# run the codez0rs
+results <- total_reps %>% purrr::map(compare_reps_gender_prop, 
+                                    num_batches = n_cores, cl = cl,
+                                    observed = observed, null_spec = null_spec)
+# Stop the cluster
+stopCluster(cl)
+registerDoSEQ()
+
+names(results) <- c("rep10k", "rep100k", "rep1m", "rep10m")
+```
+
+```{r}
+results %>% unlist()
+```
+
+
+## Making Decisions
+
+- A hypothesis test is about making a decision.
+    - Given the data, how probable is the alternative hypothesis?
+    - Do we believe it is plausible and the actual truth of the situation?
+- When the p-value is small, we say the results are 
+**statistically discernible** (or sometimes referred to as 
+**statistically significant**). 
+    - "small" is determined by us, the researchers before we run the test!
+- This means the data provide such strong evidence against $H_0$ that we 
+**reject** the null hypothesis in favor of the alternative hypothesis. 
+- The threshold is called the **discernibility level** and often represented 
+by $\alpha$.
+    - $\alpha$ can also be called the significance level
+- The value of $\alpha$ represents how rare an event needs to be in order 
+for the null hypothesis to be rejected.
+    - Historically, many fields have set $\alpha = 0.05$ if the null 
+    hypothesis is to be rejected, but this varies widely.
+
+## Statistical Discernability
+
+We say that the data provide **statistically discernible** evidence against the
+null hypothesis if the p-value is less than some predetermined threshold (e.g., 0.01, 0.05, 0.1).
+
+:::{.callout-note}
+### Discernability
+I will basically _never_ use this term. I am more likely to say that 
+we have found a statistically significant result (i.e., rejected the 
+null hypothesis). However, the term _does_ get used, so it's good to know!.
+:::
+
+
+# Inference for Single Proportions
+
+## Single Proportion Tests
+
+- We often encounter situations where we have gathered data (e.g., from a 
+survey) where the responses can be categorized as: positive or
+negative; true or false; yes or no.
+    - A reasonable way to represent such data is via a **proportion**: 
+    the ratio of the number of "yes" results to the total number of trials. 
+- For example, we might have reproductive fitness in an ecological example,
+where we sample from 36 sites known to have been used by shorebirds to nest
+in the past.
+    - Of those 36 sites, 11 are observed to have active nesting occurring.
+    - Thus, the proportion of sites actively being used is 11/36, or 0.306.
+
+## Setting Up the Test
+
+- When doing a test (any test!), the first question we ask is: what is our 
+**parameter of interest** and what **statistic** (or estimator) will be use to 
+find a **point estimate**?
+    - That is, what population did we sample from, what have we observed, and 
+    what kind of statistic do we need to use?
+- In single proportions, the parameter of interest is the 
+**population proportion** and the point estimate is the **sample proportion**: 
+just the ratio of successes to trials (number of observed "successes" divided 
+by the number of observations).
+    - We denote this as $\hat{p}$.
+    - It is our best guess for the truth, $p$ (the population proportion). 
+- We take the parameter, and set up a hypothesis around it.
+- This comes with three things: (1) the null hypothesis; (2) the alternative 
+hypothesis; (3) any assumptions that we had to make to make this work. 
+
+## Setting Up the Test
+
+In the case of the parameter of interest being the population proportion, 
+our null hypothesis will written with respect to $p$.  
+This is some underlying truth about the population that we don't know. 
+
+So our null will always be a statement like:
+
+$$
+H_0: p = ???
+$$
+
+Later, we will use the sample proportion, $\hat{p}$, to make a statistical 
+decision.
+
+## Setting Up the Test
+
+- As with the null, we are talking about the population proportion of some
+attribute, $p$.
+- There are **three options for an alternative hypothesis**.
+    - We can think that: $p > ??$ OR $p < ??$ OR $p \neq ??$
+        - That's it. 
+- The alternative is that $p$ is greater than something, less than something,
+or not-equal-to something.
+
+And what is that something $??$? **Always the value in the null hypothesis**!
+
+:::{.callout-note}
+Think about what this "test" is: it is a binary decision. Either
+you decide the evidence (from the data) isn't rare and odd, so you can't
+reject the null; or you decide the evidence **is** rare, and odd, so you
+reject the null.  
+In the latter case, you don't **actually know** what the
+truth is, just that it **isn't** the null. So $>$, $<$ or $\neq$ is the best
+you can do.
+:::
+
+## Setting Up the Test
+
+- What assumptions are necessary to make this work?
+    - Not a lot!
+- We have to assume that the samples are **independent random samples** 
+taken from a population, and then that the proportion is computed in a 
+sensible way.
+    - These are essentially always true.
+- Then, because of the key assumption (independence), we get something
+really powerful: independent samples (_trials_) taken from a population and a 
+count of "successes".
+    - We take this count and divide by the total number of observations which 
+    results in a proportion, distributed as a _Binomial random variable_.
+
+In such a case, we say that the **null distribution** is a Binomial. 
+
+## Organ Donation Example
+
+- People providing an organ for donation sometimes seek the help of a special 
+"medical consultant".
+- These consultants assist the patient in all aspects of 
+the surgery, with the goal of reducing the possibility of complications during
+the medical procedure and recovery.
+- Patients might choose a consultant based 
+in part on the historical complication rate of the consultant’s clients.
+- One  consultant tried to attract patients by noting the average complication 
+rate for liver donor surgeries in the US is about 10%, but her clients have only 
+had 3 complications in the 62 liver donor surgeries she has facilitated.
+- She claims this is strong evidence that her work meaningfully contributes to 
+reducing complications (and therefore she should be hired!).
+
+Perform a test where you require that the observed outcome be very rare 
+(less than 0.02 probability) in order to believe the exceptional claim
+she is making.
+
+## Example: Key Information {style="font-size:90%;"}
+
+* average complication rate: 10%
+* her patients: 3 in 62
+* claims this is strong evidence that she is better than average
+
+Convert this into math. From the provided population average:
+
+$$
+H_0: p = 0.10
+$$
+
+Her exceptional claim: that she is better
+than the average, and her patients experience **less** complications
+than average.
+
+$$
+H_A: p < 0.10
+$$
+
+Finally, from the patient information:
+
+$$
+\hat{p} = 3/62 = 0.0483871
+$$
+
+We don't round!
+
+## Example: Doing the Test
+
+- We can assume that each patient is independent of the other patients,
+so we have 62 randomly sampled observations from a larger population
+of "people who undergo liver transplants as donors".
+    - Thus, the distribution of the number of "successes" (meaning, a 
+    complication!) is Binomial, with $n = 62$. 
+    - The probability of "success" is the population average, $0.10$.
+
+That is:
+
+$$
+\hat{p} \sim \text{Binomial}(n = 62, p = 0.10)
+$$
+
+- Doing the "test" is really just answering the following question:
+    - if $\hat{p}$ is distributed this way (we say "under the null"), then 
+    what is the probability of seeing a result like `r 3/62` (3 "successes") or 
+    even smaller?
+
+## Example: Formally computing the p-value
+
+- Under the null, $\hat{p}$ is a Binomial with $n=62$ and $p = 0.10$. 
+- In that case, we would expect to see a result "As extreme as, or more extreme 
+than" (in the direction left) 3-in-62 with probability
+`r sum(dbinom(x = 0:3, size = 62, prob = 0.10))`. Or around 12% of the time. 
+- Is this rare?
+    - 12% is not that low. 
+    - We'd expect to see that fairly often, just by chance: 12% of the time! 
+    - Thus, the consultant's "evidence" is not very strong, and we see no 
+    convincing reason to conclude that she is better than average at helping 
+    her patients with their transplant donations. 
+- In formal statistical language, we "_fail to reject the null hypothesis_"
+and "_conclude that there is insufficient statistical evidence to 
+think that $p < 0.10$ for this consultant_". 
+
+## The Full Idea Written Out
+
+## More Space If Needed
+
+## Recap
+
+- We've spent a lot of time today developing the general framework for hypothesis
+testing.
+- We looked at an example of two proportions to motivate ourselves,
+and then considered how to design and test an example with one proportion. 
+
+- We will continue this development in the coming lectures.
